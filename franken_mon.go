@@ -118,6 +118,7 @@ func main() {
 				}
 			}
 		case <-timeout:
+			log.Println("Timeout period reached without seeing any Docker events.")
 			return
 		}
 	}
