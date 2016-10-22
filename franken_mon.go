@@ -16,7 +16,7 @@ import (
 /// Configuration is a struct representation of the config.json configuration file.
 type Configuration struct {
 	Timeout time.Duration
-	CMDs    []string
+	CommandTemplates    []string
 }
 
 /// GetConfig returns a Configuration struct from the applicaton config.json file
@@ -31,6 +31,22 @@ func GetConfig() Configuration {
 	}
 
 	return conf
+}
+
+// ParseCommandTemplate takes a command template from the configuration file and an event message
+// and parses the template into a command string
+func ParseCommandTemplate(cmdTemplate string, msg *docker.APIEvents) (string, error){
+	tmpl, err := template.New("cmd").Parse(cmdTemplate)
+	if err != nil {
+		return "", err
+	}
+	var cmdBytes bytes.Buffer
+	err = tmpl.Execute(&cmdBytes, msg)
+	if err != nil {
+		return "", err
+	}
+
+	return cmdBytes.String(), nil
 }
 
 func main() {
@@ -67,23 +83,17 @@ func main() {
 
 				//create a command template based on the configuration file
 				//pass the ID from the message start event to the template
-				for _, cmdTemplate := range conf.CMDs {
-					tmpl, err := template.New("cmd").Parse(cmdTemplate)
+				for _, cmdTemplate := range conf.CommandTemplates {
+					parsedCmd, err := ParseCommandTemplate(cmdTemplate, msg)
 					if err != nil {
 						log.Fatal(err)
 					}
-					var cmdBytes bytes.Buffer
-					err = tmpl.Execute(&cmdBytes, msg)
-					if err != nil {
-						log.Fatal(err)
-					}
-
 					// I'd like to explore the REST API or the go-dockerclient exec options
 					// further but I haven't used either and am implementing this as quickly as
 					// I can to finish the excercise in a timely manner.
 					// /bin/sh should be available in most containers / distros but this could also
 					// be a config file option or a per command option if necessary (and one didn't implement this via the RESt or go-dockerclient APIs)
-					cmd := exec.Command("/bin/sh", "-c", cmdBytes.String())
+					cmd := exec.Command("/bin/sh", "-c", parsedCmd)
 
 					//pipe the cmd stdout & stderr to the log so we have a record of what happened
 					stdout, err := cmd.StdoutPipe()
