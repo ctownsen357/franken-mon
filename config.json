@@ -1,0 +1,7 @@
+{
+  "Timeout": 1000,
+  "CMDs": [
+    "docker exec {{.ID}} pwd",
+    "docker exec {{.ID}} touch /data/tst.txt"
+  ]
+}
