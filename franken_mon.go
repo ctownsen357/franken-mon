@@ -78,7 +78,7 @@ func main() {
 		case msg := <-listener:
 			//log.Println(msg)
 			log.Println(msg.Action, msg.ID) //start
-			if msg.Action == "start" {
+			if msg.Action == "restart" {
 				conf = GetConfig() //re-obtaining the command list to obtain any changes or additions since last start event
 
 				//create a command template based on the configuration file
