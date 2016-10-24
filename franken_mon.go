@@ -1,43 +1,64 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
-	"github.com/fsouza/go-dockerclient"
-	"io"
 	"log"
 	"os"
 	"os/exec"
 	"text/template"
-	"time"
+
+	"github.com/fsouza/go-dockerclient"
 )
 
-/// Configuration is a struct representation of the config.json configuration file.
+// Configuration is a struct representation of the config.json configuration file.
 type Configuration struct {
-	Timeout time.Duration
-	ActionToMonitor string
-	ContainerNamesToMonitor	map[string]bool
-	CommandTemplates    []string
+	ActionToMonitor         string
+	ContainerNamesToMonitor map[string]bool
+	CommandTemplates        []string
 }
 
-/// GetConfig returns a Configuration struct from the applicaton config.json file
-func GetConfig() Configuration {
-	file, _ := os.Open("config.json")
-	decoder := json.NewDecoder(file)
+// GetConfig returns a Configuration struct from the applicaton config.json file
+func GetConfig() (Configuration, error) {
 	conf := Configuration{}
-	err := decoder.Decode(&conf)
+	file, err := os.Open("config.json")
 	if err != nil {
-		log.Println("There was an error trying to parse the configuration file config.json:")
-		log.Fatal(err)
+		return conf, err
+	}
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&conf)
+	if err != nil {
+		return conf, err
 	}
 
-	return conf
+	return conf, nil
+}
+
+// ExecuteCommand takes a complete command as a string and executes it in the shell environment; intended to execute Docker commands
+// but would execute any valid command.
+func ExecuteCommand(parsedCmd string) (string, error) {
+	// I'd like to explore the REST API or the go-dockerclient exec options
+	// further but I haven't used either and am implementing this as quickly as
+	// I can to finish the excercise in a timely manner.
+	// /bin/sh should be available in most containers / distros but this could also
+	// be a config file option or a per command option if necessary (and one didn't implement this via the REST or go-dockerclient APIs)
+	var outbuf, errbuf bytes.Buffer
+	cmd := exec.Command("/bin/sh", "-c", parsedCmd)
+
+	cmd.Stdout = &outbuf
+	cmd.Stderr = &errbuf
+
+	err := cmd.Start()
+	if err != nil {
+		return "", err
+	}
+	cmd.Wait()
+	return outbuf.String() + errbuf.String(), err
 }
 
 // ParseCommandTemplate takes a command template from the configuration file and an event message
 // and parses the template into a command string
-func ParseCommandTemplate(cmdTemplate string, msg *docker.APIEvents) (string, error){
+func ParseCommandTemplate(cmdTemplate string, msg *docker.APIEvents) (string, error) {
 	tmpl, err := template.New("cmd").Parse(cmdTemplate)
 	if err != nil {
 		return "", err
@@ -52,8 +73,6 @@ func ParseCommandTemplate(cmdTemplate string, msg *docker.APIEvents) (string, er
 }
 
 func main() {
-	conf := GetConfig()
-
 	endpoint := "unix:///var/run/docker.sock"
 	client, err := docker.NewClient(endpoint)
 	if err != nil {
@@ -73,55 +92,36 @@ func main() {
 		}
 	}()
 
-	timeout := time.After(conf.Timeout * time.Second)
-
+	conf, err := GetConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
 	for {
 		select {
 		case msg := <-listener:
-			if (msg.Action == conf.ActionToMonitor && len(conf.ContainerNamesToMonitor) == 0) || (len(conf.ContainerNamesToMonitor) > 0 && conf.ContainerNamesToMonitor[msg.Actor.Attributes["name"]]){
-				log.Println(msg)
-				log.Println(msg.ID, msg.Action, msg.Actor.Attributes["name"])
-				conf = GetConfig() //re-obtaining the command list to obtain any changes or additions since last start event
-
-				//create a command template based on the configuration file
-				//pass the ID from the message start event to the template
-				for _, cmdTemplate := range conf.CommandTemplates {
-					parsedCmd, err := ParseCommandTemplate(cmdTemplate, msg)
+			if msg.Action == conf.ActionToMonitor {
+				if len(conf.ContainerNamesToMonitor) == 0 || conf.ContainerNamesToMonitor[msg.Actor.Attributes["name"]] {
+					log.Println(msg.ID, msg.Action, msg.Actor.Attributes["name"])
+					conf, err := GetConfig() //re-loading the config/command list to obtain any changes or additions since last start event
 					if err != nil {
 						log.Fatal(err)
 					}
-					// I'd like to explore the REST API or the go-dockerclient exec options
-					// further but I haven't used either and am implementing this as quickly as
-					// I can to finish the excercise in a timely manner.
-					// /bin/sh should be available in most containers / distros but this could also
-					// be a config file option or a per command option if necessary (and one didn't implement this via the RESt or go-dockerclient APIs)
-					cmd := exec.Command("/bin/sh", "-c", parsedCmd)
 
-					//pipe the cmd stdout & stderr to the log so we have a record of what happened
-					stdout, err := cmd.StdoutPipe()
-					if err != nil {
-						log.Fatal(err)
-					}
-					stderr, err := cmd.StderrPipe()
-					if err != nil {
-						log.Fatal(err)
-					}
-					multi := io.MultiReader(stdout, stderr)
-
-					err = cmd.Start()
-
-					if err != nil {
-						log.Fatal(err)
-					}
-					in := bufio.NewScanner(multi)
-					for in.Scan() {
-						log.Printf(in.Text())
+					//create a command template based on the configuration file
+					//pass the ID from the message start event to the template
+					for _, cmdTemplate := range conf.CommandTemplates {
+						parsedCmd, err := ParseCommandTemplate(cmdTemplate, msg)
+						if err != nil {
+							log.Fatal(err)
+						}
+						rslt, err := ExecuteCommand(parsedCmd)
+						if err != nil {
+							log.Fatal(err)
+						}
+						log.Println(rslt)
 					}
 				}
 			}
-		case <-timeout:
-			log.Println("Timeout period reached without seeing any Docker events.")
-			return
 		}
 	}
 

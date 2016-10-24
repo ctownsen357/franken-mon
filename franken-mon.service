@@ -1,0 +1,17 @@
+[Unit]
+Description=franken-mon-linux Monitors Docker containers for restart events and executes commands against the restarted containers.
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/franken-mon
+TimeoutStartSec=0
+ExecStart=/opt/franken-mon/franken-mon-linux
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
+
+
+

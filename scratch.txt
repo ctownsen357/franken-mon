@@ -1,5 +1,0 @@
-docker run -v ./:/code --rm golang sh -c "go get github.com/fsouza/go-dockerclient && cd /code && go build "
-
-# on linix (May need to run different on Mac due to Docker /Linux VM behind the scenes preventing mapp of /user/
-docker run -v /home/ctownsend/projects/franken-mon:/franken-mon --rm -e GOOS=darwin -e GOARCH=amd64 golang sh -c "go get github.com/fsouza/go-dockerclient && cd /franken-mon && go build "
-

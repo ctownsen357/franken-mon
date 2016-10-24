@@ -1,7 +1,7 @@
 {
-  "Timeout": 1000,
   "ActionToMonitor": "restart",
   "ContainerNamesToMonitor": {
+	"alpine-worker": true
   },
   "CommandTemplates": [
     "docker exec {{.ID}} pwd",
