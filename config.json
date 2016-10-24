@@ -2,6 +2,6 @@
   "Timeout": 1000,
   "CommandTemplates": [
     "docker exec {{.ID}} pwd",
-    "docker exec {{.ID}} touch /data/tst.txt"
+    "docker exec {{.ID}} ls"
   ]
 }
