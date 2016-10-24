@@ -1,5 +1,8 @@
 {
   "Timeout": 1000,
+  "ActionToMonitor": "restart",
+  "ContainerNamesToMonitor": {
+  },
   "CommandTemplates": [
     "docker exec {{.ID}} pwd",
     "docker exec {{.ID}} ls"

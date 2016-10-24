@@ -16,6 +16,8 @@ import (
 /// Configuration is a struct representation of the config.json configuration file.
 type Configuration struct {
 	Timeout time.Duration
+	ActionToMonitor string
+	ContainerNamesToMonitor	map[string]bool
 	CommandTemplates    []string
 }
 
@@ -76,9 +78,9 @@ func main() {
 	for {
 		select {
 		case msg := <-listener:
-			//log.Println(msg)
-			log.Println(msg.Action, msg.ID) //start
-			if msg.Action == "restart" {
+			if (msg.Action == conf.ActionToMonitor && len(conf.ContainerNamesToMonitor) == 0) || (len(conf.ContainerNamesToMonitor) > 0 && conf.ContainerNamesToMonitor[msg.Actor.Attributes["name"]]){
+				log.Println(msg)
+				log.Println(msg.ID, msg.Action, msg.Actor.Attributes["name"])
 				conf = GetConfig() //re-obtaining the command list to obtain any changes or additions since last start event
 
 				//create a command template based on the configuration file
