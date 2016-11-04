@@ -1,4 +1,5 @@
 # franken-mon
+![franken-mon](images/alive.jpg "It's alive!")
 franken-mon was an October excercise, hence the Halloween inspired name, to create a service that could be used to monitor Docker restart events and execute commands against the restarted container.  For example, a container that needs to have any stateful type of information set on restart; something like this could be used to accomplish that objective.  
 
 Alternatively, one could implement a simple shell script and accomplish nearly the same thing with the following:
