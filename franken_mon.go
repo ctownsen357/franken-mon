@@ -96,16 +96,19 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	if len(conf.ContainerNamesToMonitor) > 0{
+		log.Printf("Waiting for %s events for the following container(s): %v; if you want to monitor all containers please delete the container names from the ContainerNamesToMonitor collection in config.json.  You do NOT need to restart the service for the change to take effect.", conf.ActionToMonitor, conf.ContainerNamesToMonitor)
+	}
 	for {
 		select {
 		case msg := <-listener:
 			if msg.Action == conf.ActionToMonitor {
+				conf, err := GetConfig() //re-loading the config/command list to obtain any changes or additions since last start event
+				if err != nil {
+					log.Fatal(err)
+				}
 				if len(conf.ContainerNamesToMonitor) == 0 || conf.ContainerNamesToMonitor[msg.Actor.Attributes["name"]] {
 					log.Println(msg.ID, msg.Action, msg.Actor.Attributes["name"])
-					conf, err := GetConfig() //re-loading the config/command list to obtain any changes or additions since last start event
-					if err != nil {
-						log.Fatal(err)
-					}
 
 					//create a command template based on the configuration file
 					//pass the ID from the message start event to the template
