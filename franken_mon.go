@@ -37,9 +37,6 @@ func GetConfig() (Configuration, error) {
 // ExecuteCommand takes a complete command as a string and executes it in the shell environment; intended to execute Docker commands
 // but would execute any valid command.
 func ExecuteCommand(parsedCmd string) (string, error) {
-	// I'd like to explore the REST API or the go-dockerclient exec options
-	// further but I haven't used either and am implementing this as quickly as
-	// I can to finish the excercise in a timely manner.
 	// /bin/sh should be available in most containers / distros but this could also
 	// be a config file option or a per command option if necessary (and one didn't implement this via the REST or go-dockerclient APIs)
 	var outbuf, errbuf bytes.Buffer
