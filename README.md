@@ -12,7 +12,7 @@ echo ' pwd' > cmd.txt && docker events | awk '/container restart/{system("echo d
 That command pipes the pwd command into a file and then pipes the stream from docker events into awk which is searching for the restart event. When the restart event is encountered it executes the arbitrary command from the text file against the restarted container. The command in the text file could be replaced with any desired command.
 
 
-Where is the fun in that; let's write some code to do it that is testable and explores doing the same thing running a Go binary as a service.
+Where is the fun in that; let's write some code, make it testable, and explores doing the same thing running a Go binary as a systemd service.
 
 ### The request:
 Write a configurable service in Go that can be started by running a compiled binary. The service should monitor the Docker API for restart events and run an arbitrary command in response to that event. The arbitrary command should be supplied via the config file and should allow a template like {{ .ID }} so the user can run commands against the restarted container.
